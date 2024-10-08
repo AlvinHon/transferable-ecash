@@ -388,25 +388,6 @@ mod tests {
 
     #[test]
     fn test_2_show_extractability() {
-        use ark_std::test_rng;
-        use ark_std::{One, UniformRand};
-
-        type E = ark_bls12_381::Bls12_381;
-        type Fr = <E as Pairing>::ScalarField;
-
-        struct SearcherImpl {
-            pks: Vec<PublicKey<E>>,
-        }
-
-        impl Searcher<E> for SearcherImpl {
-            fn search<F>(&self, f: F) -> Option<PublicKey<E>>
-            where
-                F: Fn(&PublicKey<E>) -> bool,
-            {
-                self.pks.iter().find_map(|pk| f(pk).then_some(pk.clone()))
-            }
-        }
-
         let rng = &mut test_rng();
         let params = Params::<E>::rand(rng);
         let (sk, pk) = params.key_gen(rng);
