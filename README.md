@@ -10,15 +10,15 @@ It protects user privacy and, provides means to trace fraudulent behavior (doubl
 The entire work consists of some building blocks. The current progress towards their completeness:
 
 - [x] Double Spending Tag
-- [] Encryption Scheme E' (Replayable-CCA encryption scheme)
-    - [] One-time linearly homomorphic structure-preserving signature
-- [] Encryption Scheme E
-- [] Transferable E-cash construction
+- [ ] Encryption Scheme E' (Replayable-CCA encryption scheme)
+    - [ ] One-time linearly homomorphic structure-preserving signature
+- [ ] Encryption Scheme E
+- [ ] Transferable E-cash construction
 
 
-This work is built on top of [Arkworkds], a rust ecosystem for cryptograhic libraries such as elliptic curve arithmetic.
+This work is built on top of [Arkworks](https://github.com/arkworks-rs/), a rust ecosystem for cryptographic libraries such as elliptic curve arithmetic.
 
-Note: This library has not been thorougnly audited for production use. Please take your own risk to use it in production.
+Note: This library has not been thoroughly audited for production use. Please take your own risk to use it in production.
 
 
 ## Reference:
