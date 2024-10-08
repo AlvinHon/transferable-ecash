@@ -1,0 +1,24 @@
+[package]
+name = "transferable-ecash"
+version = "0.1.0"
+description = "Transferable E-Cash"
+authors = ["alvin.cpp@gmail.com"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/AlvinHon/transferable-ecash"
+categories = ["cryptography"]
+keywords = ["cryptography", "ecash", "double-spending"]
+edition = "2021"
+
+[lib]
+name = "transferable_ecash"
+path = "src/lib.rs"
+
+[dependencies]
+ark-ec = "0.4"
+ark-ff = "0.4"
+ark-serialize = "0.4"
+ark-std = "0.4"
+#groth-sahai = {git="https://github.com/AlvinHon/groth-sahai-rs"}
+
+[dev-dependencies]
+ark-bls12-381 = "0.4"
