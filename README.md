@@ -11,7 +11,7 @@ The entire work consists of some building blocks. The current progress towards t
 
 - [x] Double Spending Tag
 - [ ] Encryption Scheme E' (Replayable-CCA encryption scheme)
-    - [ ] One-time linearly homomorphic structure-preserving signature
+    - [X] One-time linearly homomorphic structure-preserving signature
 - [ ] Encryption Scheme E
 - [ ] Transferable E-cash construction
 
