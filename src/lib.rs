@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-pub mod ds_tag;
+pub mod double_spending;
 pub mod lhsps;
 pub mod params;

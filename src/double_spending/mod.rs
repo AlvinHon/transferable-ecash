@@ -36,8 +36,8 @@ mod tests {
     use ark_std::test_rng;
     use ark_std::{One, UniformRand};
 
-    use crate::ds_tag::detect::detect;
-    use crate::ds_tag::{key_gen, Params};
+    use crate::double_spending::detect::detect;
+    use crate::double_spending::{key_gen, Params};
 
     use super::detect::Searcher;
     use super::PublicKey;
