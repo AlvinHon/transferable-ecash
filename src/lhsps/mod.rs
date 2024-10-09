@@ -21,14 +21,11 @@ use verifying_key::VerifyKey;
 /// # Example
 ///
 /// ```rust
-/// use ark_bls12_381::Bls12_381;
-/// use ark_std::test_rng;
-/// use ark_std::UniformRand;
-/// use ark_std::rand::RngCore;
+/// use ark_std::{test_rng, UniformRand};
 /// use transferable_ecash::lhsps;
 ///
 /// let rng = &mut test_rng();
-/// let (sk, pk) = lhsps::setup::<Bls12_381, _>(rng, 5);
+/// let (sk, pk) = lhsps::setup::<ark_bls12_381::Bls12_381, _>(rng, 5);
 /// ```
 pub fn setup<E: Pairing, R: RngCore>(rng: &mut R, n: usize) -> (SigningKey<E>, VerifyKey<E>) {
     let xy: Vec<(E::ScalarField, E::ScalarField)> = (0..n)

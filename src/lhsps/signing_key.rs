@@ -16,14 +16,11 @@ impl<E: Pairing> SigningKey<E> {
     /// # Example
     ///
     /// ```rust
-    /// use ark_bls12_381::Bls12_381;
-    /// use ark_std::test_rng;
-    /// use ark_std::UniformRand;
-    /// use ark_std::rand::RngCore;
+    /// use ark_std::{test_rng, UniformRand};
     /// use ark_ec::pairing::Pairing;
     /// use transferable_ecash::lhsps;
     ///
-    /// type E = Bls12_381;
+    /// type E = ark_bls12_381::Bls12_381;
     /// type G1 = <E as Pairing>::G1Affine;
     ///
     /// let rng = &mut test_rng();
