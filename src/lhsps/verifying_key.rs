@@ -1,7 +1,12 @@
 use ark_ec::pairing::{Pairing, PairingOutput};
 use ark_ec::AffineRepr;
+use ark_std::rand::RngCore;
 use ark_std::Zero;
+use groth_sahai::prover::CProof;
+use groth_sahai::CRS;
 use std::ops::Mul;
+
+use crate::proof::gs_proof_xbxb_t;
 
 use super::signature::Signature;
 
@@ -116,5 +121,46 @@ impl<E: Pairing> VerifyKey<E> {
             .map(|(m, pk)| E::pairing(*m, *pk))
             .fold(PairingOutput::zero(), |acc, m| acc + m);
         lhs == rhs
+    }
+
+    /// Create GS proof from a signature that satisfies pairing product equation: e(z, gz)e(r, gr) == Π e(m, pk).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use ark_bls12_381::Bls12_381;
+    /// use ark_ec::pairing::Pairing;
+    /// use ark_std::rand::RngCore;
+    /// use ark_std::test_rng;
+    /// use ark_std::UniformRand;
+    /// use transferable_ecash::lhsps;
+    /// use groth_sahai::{AbstractCrs, CRS};
+    ///
+    /// type E = Bls12_381;
+    /// type G1 = <E as Pairing>::G1Affine;
+    ///
+    /// let rng = &mut test_rng();
+    /// let (sk, pk) = lhsps::setup::<E, _>(rng, 5);
+    /// let m: Vec<G1> = (0..5).map(|_| G1::rand(rng)).collect();
+    /// let sig = sk.sign(&m).unwrap();
+    /// assert!(pk.verify(&m, &sig));
+    ///
+    /// let crs = CRS::<E>::generate_crs(rng);
+    /// let pf = pk.generate_proof(rng, &crs, &m, &sig);
+    /// assert!(!pf.equ_proofs.is_empty());
+    /// ```
+    pub fn generate_proof<R: RngCore>(
+        &self,
+        rng: &mut R,
+        crs: &CRS<E>,
+        m: &[E::G1Affine],
+        sig: &Signature<E>,
+    ) -> CProof<E> {
+        let target = m
+            .iter()
+            .zip(&self.pk)
+            .map(|(m, pk)| E::pairing(*m, *pk))
+            .fold(PairingOutput::zero(), |acc, m| acc + m);
+        gs_proof_xbxb_t(rng, &crs, sig.z, self.gz, sig.r, self.gr, target)
     }
 }

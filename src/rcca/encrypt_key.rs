@@ -1,14 +1,12 @@
-use ark_ec::pairing::{Pairing, PairingOutput};
-use ark_ec::AffineRepr;
-use ark_std::rand::{Rng, RngCore};
-use ark_std::{One, UniformRand, Zero};
-use groth_sahai::prover::{CProof, Provable};
-use groth_sahai::statement::PPE;
-use groth_sahai::verifier::Verifiable;
-use groth_sahai::{Matrix, CRS};
+use ark_ec::pairing::Pairing;
+use ark_std::rand::Rng;
+use ark_std::{One, UniformRand};
+use groth_sahai::prover::CProof;
+use groth_sahai::CRS;
 use std::ops::{Mul, Neg};
 
 use crate::lhsps;
+use crate::proof::gs_proof_ayxb;
 
 use super::ciphertext::Ciphertext;
 
@@ -52,7 +50,7 @@ impl<E: Pairing> EncryptKey<E> {
         // TODO: trivial because b = 1. optimization point here.
         let b = E::ScalarField::one();
         // e(A, Y) + e(X, B) = e(g, g~^-b) + e(g^b, g~) = 0
-        let cpf_b = gs_proof(
+        let cpf_b = gs_proof_ayxb(
             rng,
             &self.crs,
             self.crs.g1_gen,
@@ -67,7 +65,7 @@ impl<E: Pairing> EncryptKey<E> {
                 // ps_i = c_i^b
                 let ps_i = c_i.mul(b).into();
                 // e(A, Y) + e(X, B) = e(c_i, g~^-b) + e(g^b, g~) = 0
-                gs_proof::<E, _>(
+                gs_proof_ayxb::<E, _>(
                     rng,
                     &self.crs,
                     *c_i,
@@ -140,38 +138,4 @@ impl<E: Pairing> EncryptKey<E> {
     pub fn adpt_proof(&self) {
         todo!()
     }
-}
-
-/// Create GS proof for pairing product equation: e(A, Y) + e(X, B) = 0.
-/// This function is used by encryption function in EncryptKey.
-pub(crate) fn gs_proof<E: Pairing, R: RngCore>(
-    rng: &mut R,
-    crs: &CRS<E>,
-    a: E::G1Affine,
-    y: E::G2Affine,
-    x: E::G1Affine,
-    b: E::G2Affine,
-) -> CProof<E> {
-    // Apply:
-    //      Π e(A_i, Y_i) + Π e(X_i, B_i) + ΠΠ e(X_i, Y_j)^gamma_ij = t
-    // We have:
-    //  n = 1, m = 1,
-    //  A = [a], B = [0, b], X = [0, x], Y = [y],
-    //  gamma = 0
-    let xvars = vec![E::G1Affine::zero(), x];
-    let yvars = vec![y];
-    let a_consts = vec![a];
-    let b_consts = vec![E::G2Affine::zero(), b];
-    let gamma: Matrix<E::ScalarField> =
-        vec![vec![E::ScalarField::zero()], vec![E::ScalarField::zero()]];
-    let target: PairingOutput<E> = PairingOutput::<E>::zero();
-    let equ: PPE<E> = PPE::<E> {
-        a_consts,
-        b_consts,
-        gamma,
-        target,
-    };
-    let proof: CProof<E> = equ.commit_and_prove(&xvars, &yvars, &crs, rng);
-    assert!(equ.verify(&proof, &crs));
-    proof
 }
