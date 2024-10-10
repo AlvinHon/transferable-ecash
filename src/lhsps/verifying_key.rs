@@ -29,6 +29,7 @@ impl<E: Pairing> VerifyKey<E> {
     /// use ark_std::{test_rng, UniformRand};
     /// use ark_ec::pairing::Pairing;
     /// use transferable_ecash::lhsps;
+    /// use std::ops::Mul;
     ///
     /// type E = ark_bls12_381::Bls12_381;
     /// type G1 = <E as Pairing>::G1Affine;
@@ -38,31 +39,22 @@ impl<E: Pairing> VerifyKey<E> {
     /// let (sk, pk) = lhsps::setup::<E, _>(rng, 5);
     /// let mut m: Vec<G1> = (0..5).map(|_| G1::rand(rng)).collect();
     /// let sig = sk.sign(&m).unwrap();
-    /// let sig_with_w = vec![(Fr::rand(rng), sig)];
-    /// let (m_d, sig_d) = pk.sign_derive(vec![m].as_ref(), &sig_with_w).unwrap();
+    /// let w = Fr::rand(rng);
+    /// let sig_with_w = vec![(w, sig)];
+    /// let sig_d = pk.sign_derive(&sig_with_w).unwrap();
+    /// let m_d = m.iter().map(|mi| mi.mul(w).into()).collect::<Vec<_>>();
     /// assert!(pk.verify(&m_d, &sig_d));
     /// ```
     pub fn sign_derive(
         &self,
-        m: &[Vec<E::G1Affine>],
         sig_with_w: &[(E::ScalarField, Signature<E>)],
-    ) -> Result<(Vec<E::G1Affine>, Signature<E>), ()> {
-        if sig_with_w.len() != m.len() || m.iter().any(|mi| mi.len() != self.pk.len()) {
+    ) -> Result<Signature<E>, ()> {
+        if sig_with_w.is_empty() {
             return Err(());
         }
-
-        let l = sig_with_w.len();
-        let n = self.pk.len();
-
-        // m = (Πm1^w1 for _ in 1..l, Πm2^w2 for _ in 1..l, ..., Πmn^wl for _ in 1..m,)
-        let mut new_m = Vec::new();
-        for j in 0..n {
-            let mut m_sum = E::G1Affine::zero();
-            for i in 0..l {
-                let w = sig_with_w[i].0;
-                m_sum = (m_sum + m[i][j].mul(w)).into();
-            }
-            new_m.push(m_sum);
+        // cannot derive signature on message with Mi' = Mi^0 = 1. (verify must fail)
+        if sig_with_w.iter().any(|(w, _)| w.is_zero()) {
+            return Err(());
         }
 
         // z = Π z^w, r = Π r^w
@@ -73,7 +65,7 @@ impl<E: Pairing> VerifyKey<E> {
                 ((acc.0 + p.0).into(), (acc.1 + p.1).into())
             });
 
-        Ok((new_m, Signature { z, r }))
+        Ok(Signature { z, r })
     }
 
     /// Verifies a signature using the one-time linearly homomorphic structure-preserving signature.
@@ -137,8 +129,8 @@ impl<E: Pairing> VerifyKey<E> {
     /// assert!(pk.verify(&m, &sig));
     ///
     /// let crs = CRS::<E>::generate_crs(rng);
-    /// let pf = pk.generate_proof(rng, &crs, &m, &sig);
-    /// assert!(!pf.equ_proofs.is_empty());
+    /// pk.generate_proof(rng, &crs, &m, &sig)
+    ///     .expect("proof should be valid");
     /// ```
     pub fn generate_proof<R: RngCore>(
         &self,
@@ -146,12 +138,82 @@ impl<E: Pairing> VerifyKey<E> {
         crs: &CRS<E>,
         m: &[E::G1Affine],
         sig: &Signature<E>,
-    ) -> CProof<E> {
+    ) -> Result<CProof<E>, ()> {
         let target = m
             .iter()
             .zip(&self.pk)
             .map(|(m, pk)| E::pairing(*m, *pk))
             .fold(PairingOutput::zero(), |acc, m| acc + m);
         gs_proof_xbxb_t(rng, &crs, sig.z, self.gz, sig.r, self.gr, target)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lhsps::setup;
+    use ark_bls12_381::Bls12_381;
+    use ark_ec::pairing::Pairing;
+    use ark_std::UniformRand;
+    use groth_sahai::{AbstractCrs, CRS};
+    use std::ops::Mul;
+
+    type E = Bls12_381;
+    type G1 = <E as Pairing>::G1Affine;
+    type Fr = <E as Pairing>::ScalarField;
+
+    #[test]
+    fn test_derived_signature() {
+        let rng = &mut ark_std::test_rng();
+        let crs = CRS::<E>::generate_crs(rng);
+
+        let (sk, pk) = setup::<E, _>(rng, 5);
+        let m = (0..5).map(|_| G1::rand(rng)).collect::<Vec<_>>();
+        let sig = sk.sign(&m).unwrap();
+        pk.generate_proof(rng, &crs, &m, &sig)
+            .expect("proof on original message should be valid");
+
+        // derive signature from original signature
+        let w = Fr::rand(rng);
+        let sig_d = pk.sign_derive(&[(w, sig)]).unwrap();
+        let m_d = m.iter().map(|mi| mi.mul(w).into()).collect::<Vec<_>>();
+        assert!(pk.verify(&m_d, &sig_d));
+
+        // proof generated from derived signature should be valid on derived message m_d
+        pk.generate_proof(rng, &crs, &m_d, &sig_d)
+            .expect("proof should be valid");
+    }
+
+    #[test]
+    fn test_two_derived_signatures() {
+        let rng = &mut ark_std::test_rng();
+        let crs = CRS::<E>::generate_crs(rng);
+
+        let (sk, pk) = setup::<E, _>(rng, 5);
+        let m1 = (0..5).map(|_| G1::rand(rng)).collect::<Vec<_>>();
+        let sig1 = sk.sign(&m1).unwrap();
+        pk.generate_proof(rng, &crs, &m1, &sig1)
+            .expect("proof on original message 1 should be valid");
+
+        let m2 = (0..5).map(|_| G1::rand(rng)).collect::<Vec<_>>();
+        let sig2 = sk.sign(&m2).unwrap();
+        pk.generate_proof(rng, &crs, &m2, &sig2)
+            .expect("proof on original message 2 should be valid");
+
+        // derive signature from original signature
+        let w1 = Fr::rand(rng);
+        let w2 = Fr::rand(rng);
+        let sig_d = pk.sign_derive(&[(w1, sig1), (w2, sig2)]).unwrap();
+        let m1_d = m1.iter().map(|mi| mi.mul(w1).into()).collect::<Vec<G1>>();
+        let m2_d = m2.iter().map(|mi| mi.mul(w2).into()).collect::<Vec<G1>>();
+        let m1_m2_d = m1_d
+            .iter()
+            .zip(&m2_d)
+            .map(|(m1i, m2i)| (*m1i + *m2i).into())
+            .collect::<Vec<_>>();
+        assert!(pk.verify(&m1_m2_d, &sig_d));
+
+        // proof generated from derived signature should be valid on derived message m1_d + m2_d
+        pk.generate_proof(rng, &crs, &m1_m2_d, &sig_d)
+            .expect("proof should be valid");
     }
 }

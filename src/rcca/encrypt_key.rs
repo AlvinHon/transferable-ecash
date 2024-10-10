@@ -1,4 +1,5 @@
 use ark_ec::pairing::Pairing;
+use ark_ec::AffineRepr;
 use ark_std::rand::Rng;
 use ark_std::{One, UniformRand};
 use groth_sahai::prover::CProof;
@@ -12,14 +13,14 @@ use super::ciphertext::Ciphertext;
 
 pub struct EncryptKey<E: Pairing> {
     pub(crate) f: E::G1Affine,
-    pub(crate) g: E::G1Affine, // = crs.g1_gen
+    pub(crate) g: E::G1Affine,
 
-    pub(crate) h_alpha: Vec<E::G1Affine>,
+    pub(crate) h: Vec<E::G1Affine>,
     pub(crate) crs: CRS<E>,
-    pub(crate) sigs: (
-        lhsps::signature::Signature<E>,
-        lhsps::signature::Signature<E>,
-    ),
+
+    pub(crate) lhsps_sig_v1: lhsps::signature::Signature<E>,
+    pub(crate) lhsps_sig_v2: lhsps::signature::Signature<E>,
+    pub(crate) lhsps_vk: lhsps::verifying_key::VerifyKey<E>,
 }
 
 impl<E: Pairing> EncryptKey<E> {
@@ -27,23 +28,18 @@ impl<E: Pairing> EncryptKey<E> {
     ///
     /// A randomized encryption algorithm which takes as input,
     /// - a message `m`,
-    /// - some randomness `v` (same length as `m`),
+    /// - some randomness `rng`,
     ///
     /// and outputs a ciphertext.
-    pub fn encrypt<R: Rng>(
-        &self,
-        rng: &mut R,
-        m: &[E::G1Affine],
-        v: &[E::G1Affine],
-    ) -> Ciphertext<E> {
+    pub fn encrypt<R: Rng>(&self, rng: &mut R, m: &[E::G1Affine]) -> Ciphertext<E> {
         let phi = E::ScalarField::rand(rng);
         // c = [c0, c1, ..., cn+1]
         //   = [f^phi, g^phi, m1^phi + h1^phi, m2^phi + h2^phi, ..., mn^phi + hn^phi]
         let mut c = vec![self.f.mul(phi).into(), self.g.mul(phi).into()];
         c.extend(
             m.iter()
-                .zip(v.iter())
-                .map(|(mi, vi)| (mi.mul(phi) + vi.mul(phi)).into()),
+                .zip(self.h.iter())
+                .map(|(mi, hi)| (*mi + hi.mul(phi)).into()),
         );
 
         // generate gs-proof of e(g^b, g2) + e(g, g2^-b) = 0
@@ -53,11 +49,12 @@ impl<E: Pairing> EncryptKey<E> {
         let cpf_b = gs_proof_ayxb(
             rng,
             &self.crs,
-            self.crs.g1_gen,
+            self.g,
             self.crs.g2_gen.mul(b.neg()).into(),
             self.g.mul(b).into(),
             self.crs.g2_gen,
-        );
+        )
+        .unwrap();
         // generate gs-proof of e(ps_i, g2) + e(ci, g2^-b) = 0
         let cpf_ps: Vec<CProof<E>> = c
             .iter()
@@ -73,37 +70,97 @@ impl<E: Pairing> EncryptKey<E> {
                     ps_i,
                     self.crs.g2_gen,
                 )
+                .unwrap()
             })
             .collect();
-        // v = [c_0^b, c_1^b, g^(1-b), c_1^(1-b), ..., c_n+1^(1-b)]
-        let mut v = vec![c[0].mul(b).into(), c[1].mul(b).into()];
-        v.push(self.g.mul(b.neg()).into());
+        // v = [c_0^b, c_1^b, g^(1-b), c_2^(1-b), ..., c_n+1^(1-b)]
+        //   = [c_0, c_1, 1, 1, ..., 1]
+        let mut v = vec![
+            c[0].mul(b).into(),
+            c[1].mul(b).into(),
+            self.g.mul(E::ScalarField::one() + b.neg()).into(),
+        ];
         v.extend(
             c.iter()
-                .skip(1)
-                .map(|c_i| c_i.mul(b.neg()).into())
+                .skip(3)
+                .map(|c_i| c_i.mul(E::ScalarField::one() + b.neg()).into())
                 .collect::<Vec<_>>(),
         );
-        // generate lhsps signature on v
-        // TODO
+        // generate lhsps signature on v = v1^phi + v2 ^ 0 = v1^phi, hence only lhsps_sig_v1 is needed
+        let sig_with_w = vec![(phi, self.lhsps_sig_v1)];
+        let sigv = self.lhsps_vk.sign_derive(&sig_with_w).unwrap();
 
         // generate proof of validity of lhsps signature on v
-        // TODO cps_v
+        let cpf_v = self
+            .lhsps_vk
+            .generate_proof(rng, &self.crs, &v, &sigv)
+            .unwrap();
 
         // generate proof of (f^b, g^b, h_1^b, ..., h_n^b)
-        // TODO cps_fgh
+        let mut fgh = vec![
+            self.f.mul(b).into(),
+            self.g.mul(b).into(),
+            E::G1Affine::zero(),
+        ];
+        fgh.extend(
+            self.h
+                .iter()
+                .map(|h_i| h_i.mul(b).into())
+                .collect::<Vec<_>>(),
+        );
+        // generate gs-proof of:
+        // 1. e(f^b, g2) + e(f, g2^-b) = 0
+        // 2. e(g^b, g2) + e(g, g2^-b) = 0 (i.e. cpf_b)
+        // 3. e(h_i^b, g2) + e(h_i, g2^-b) = 0
+        let cpf_fgh: Vec<CProof<E>> = fgh
+            .iter()
+            .map(|fgh_i| {
+                // e(A, Y) + e(X, B) = e(f^b, g~^-b) + e(f, g~) = 0
+                gs_proof_ayxb::<E, _>(
+                    rng,
+                    &self.crs,
+                    *fgh_i,
+                    self.crs.g2_gen.mul(b.neg()).into(),
+                    fgh_i.mul(b).into(),
+                    self.crs.g2_gen,
+                )
+                .unwrap()
+            })
+            .collect();
 
         // w = (f^b, g^b, 1, h_1^(1-b), ..., h_n^(1-b))
-        // TODO
+        //   = (f, g, 1, 1, ..., 1)
+        let mut w = vec![
+            self.f.mul(b).into(),
+            self.g.mul(b).into(),
+            E::G1Affine::zero(),
+        ];
+        w.extend(
+            self.h
+                .iter()
+                .map(|h_i| h_i.mul(E::ScalarField::one() + b.neg()).into())
+                .collect::<Vec<_>>(),
+        );
 
-        // generate lhsps signature on w
-        // TODO
+        // generate lhsps signature on w = v1^b + v2^0 = v1^b, hence only lhsps_sig_v1 is needed
+        let sig_with_w = vec![(b, self.lhsps_sig_v1)];
+        let sigw = self.lhsps_vk.sign_derive(&sig_with_w).unwrap();
 
         // generate proof of validity of lhsps signature on w
-        // TODO cps_w
+        let cpf_w = self
+            .lhsps_vk
+            .generate_proof(rng, &self.crs, &w, &sigw)
+            .unwrap();
 
-        // Output ciphertext c = (ci for i in 1..n, cps_b, cps_ps, cps_v, cps_fgh, cps_w)
-        todo!()
+        // Output ciphertext c = (ci for i in 1..n, cpf_b, cpf_ps, cpf_v, cpf_fgh, cpf_w)
+        Ciphertext {
+            c,
+            cpf_b,
+            cpf_ps,
+            cpf_v,
+            cpf_fgh,
+            cpf_w,
+        }
     }
 
     /// Re-randomize a ciphertext.

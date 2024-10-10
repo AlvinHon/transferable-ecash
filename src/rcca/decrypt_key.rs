@@ -3,7 +3,7 @@ use ark_ec::pairing::Pairing;
 use super::ciphertext::Ciphertext;
 
 pub struct DecryptKey<E: Pairing> {
-    pub alpha: Vec<E::ScalarField>,
+    pub(crate) alpha: Vec<E::ScalarField>,
 }
 
 impl<E: Pairing> DecryptKey<E> {

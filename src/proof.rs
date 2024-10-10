@@ -19,7 +19,7 @@ pub(crate) fn gs_proof_ayxb<E: Pairing, R: RngCore>(
     y: E::G2Affine,
     x: E::G1Affine,
     b: E::G2Affine,
-) -> CProof<E> {
+) -> Result<CProof<E>, ()> {
     // Apply:
     //      Π e(A_i, Y_i) + Π e(X_i, B_i) + ΠΠ e(X_i, Y_j)^gamma_ij = t
     // We have:
@@ -40,8 +40,7 @@ pub(crate) fn gs_proof_ayxb<E: Pairing, R: RngCore>(
         target,
     };
     let proof: CProof<E> = equ.commit_and_prove(&xvars, &yvars, &crs, rng);
-    assert!(equ.verify(&proof, &crs));
-    proof
+    equ.verify(&proof, &crs).then(|| proof).ok_or(())
 }
 
 /// Create GS proof for pairing product equation: e(X1, B1) + e(X2, B2) = T.
@@ -54,7 +53,7 @@ pub(crate) fn gs_proof_xbxb_t<E: Pairing, R: RngCore>(
     x2: E::G1Affine,
     b2: E::G2Affine,
     target: PairingOutput<E>,
-) -> CProof<E> {
+) -> Result<CProof<E>, ()> {
     // Apply:
     //      Π e(A_i, Y_i) + Π e(X_i, B_i) + ΠΠ e(X_i, Y_j)^gamma_ij = t
     // We have:
@@ -77,6 +76,5 @@ pub(crate) fn gs_proof_xbxb_t<E: Pairing, R: RngCore>(
         target,
     };
     let proof: CProof<E> = equ.commit_and_prove(&xvars, &yvars, &crs, rng);
-    assert!(equ.verify(&proof, &crs));
-    proof
+    equ.verify(&proof, &crs).then(|| proof).ok_or(())
 }
