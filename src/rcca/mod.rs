@@ -20,6 +20,14 @@ pub mod encrypt_key;
 
 pub fn key_gen<E: Pairing, R: RngCore>(rng: &mut R, n: usize) -> (DecryptKey<E>, EncryptKey<E>) {
     let crs = CRS::<E>::generate_crs(rng);
+    let crs_cloned = // TODO derive Clone for CRS
+        CRS::<E> {
+            u: crs.u.clone(),
+            v: crs.v.clone(),
+            g1_gen: crs.g1_gen,
+            g2_gen: crs.g2_gen,
+            gt_gen: crs.gt_gen,
+        };
 
     let f = E::G1Affine::rand(rng);
     let g = E::G1Affine::rand(rng);
@@ -48,7 +56,19 @@ pub fn key_gen<E: Pairing, R: RngCore>(rng: &mut R, n: usize) -> (DecryptKey<E>,
     let lhsps_sig_v2 = tk.sign(&v2).unwrap();
 
     (
-        DecryptKey { alpha },
+        DecryptKey {
+            enc_key: EncryptKey {
+                f,
+                g,
+                h: h.clone(),
+                crs: crs_cloned,
+                lhsps_sig_v1,
+                lhsps_sig_v2,
+                lhsps_vk: lhsps_vk.clone(),
+            },
+
+            alpha,
+        },
         EncryptKey {
             f,
             g,
@@ -78,5 +98,7 @@ mod tests {
         let (sk, pk) = key_gen::<E, _>(rng, 5);
         let m = (0..5).map(|_| G1::rand(rng)).collect::<Vec<_>>();
         let c = pk.encrypt(rng, &m);
+        let m_d = sk.decrypt(&c).unwrap();
+        assert_eq!(m, m_d);
     }
 }

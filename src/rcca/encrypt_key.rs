@@ -7,7 +7,7 @@ use groth_sahai::CRS;
 use std::ops::{Mul, Neg};
 
 use crate::lhsps;
-use crate::proof::gs_proof_ayxb;
+use crate::proof::create_proof_ayxb;
 
 use super::ciphertext::Ciphertext;
 
@@ -46,7 +46,7 @@ impl<E: Pairing> EncryptKey<E> {
         // TODO: trivial because b = 1. optimization point here.
         let b = E::ScalarField::one();
         // e(A, Y) + e(X, B) = e(g, g~^-b) + e(g^b, g~) = 0
-        let cpf_b = gs_proof_ayxb(
+        let cpf_b = create_proof_ayxb(
             rng,
             &self.crs,
             self.g,
@@ -58,11 +58,12 @@ impl<E: Pairing> EncryptKey<E> {
         // generate gs-proof of e(ps_i, g2) + e(ci, g2^-b) = 0
         let cpf_ps: Vec<CProof<E>> = c
             .iter()
+            .skip(1)
             .map(|c_i| {
                 // ps_i = c_i^b
                 let ps_i = c_i.mul(b).into();
                 // e(A, Y) + e(X, B) = e(c_i, g~^-b) + e(g^b, g~) = 0
-                gs_proof_ayxb::<E, _>(
+                create_proof_ayxb::<E, _>(
                     rng,
                     &self.crs,
                     *c_i,
@@ -97,11 +98,7 @@ impl<E: Pairing> EncryptKey<E> {
             .unwrap();
 
         // generate proof of (f^b, g^b, h_1^b, ..., h_n^b)
-        let mut fgh = vec![
-            self.f.mul(b).into(),
-            self.g.mul(b).into(),
-            E::G1Affine::zero(),
-        ];
+        let mut fgh = vec![self.f.mul(b).into(), self.g.mul(b).into()];
         fgh.extend(
             self.h
                 .iter()
@@ -115,8 +112,8 @@ impl<E: Pairing> EncryptKey<E> {
         let cpf_fgh: Vec<CProof<E>> = fgh
             .iter()
             .map(|fgh_i| {
-                // e(A, Y) + e(X, B) = e(f^b, g~^-b) + e(f, g~) = 0
-                gs_proof_ayxb::<E, _>(
+                // e(A, Y) + e(X, B) = 0
+                create_proof_ayxb::<E, _>(
                     rng,
                     &self.crs,
                     *fgh_i,
@@ -192,7 +189,7 @@ impl<E: Pairing> EncryptKey<E> {
     /// - some randomness,
     ///
     /// and outputs an equality proof.
-    pub fn adpt_proof(&self) {
+    pub fn adapt_proof(&self) {
         todo!()
     }
 }
