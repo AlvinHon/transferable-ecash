@@ -1,13 +1,10 @@
-//! This module implements the Replayable-CCA encryption scheme from Appendix B.3 of
+//! This module implements the Replayable-CCA encryption scheme from Appendix B.2 of
 //! of `Transferable E-cash: A Cleaner Model and the First Practical Instantiation`.
 
 use std::vec;
 
-use ark_ec::pairing::Pairing;
-use ark_ec::AffineRepr;
-use ark_std::ops::Mul;
-use ark_std::rand::RngCore;
-use ark_std::UniformRand;
+use ark_ec::{pairing::Pairing, AffineRepr};
+use ark_std::{ops::Mul, rand::RngCore, UniformRand};
 use decrypt_key::DecryptKey;
 use encrypt_key::EncryptKey;
 use groth_sahai::{AbstractCrs, CRS};

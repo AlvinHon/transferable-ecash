@@ -1,5 +1,4 @@
-use ark_ec::pairing::Pairing;
-use ark_ec::AffineRepr;
+use ark_ec::{pairing::Pairing, AffineRepr};
 use std::ops::{Mul, Neg};
 
 use crate::proof::check_proof_ayxb;

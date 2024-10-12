@@ -1,9 +1,6 @@
-use ark_ec::pairing::Pairing;
-use ark_ec::AffineRepr;
-use ark_std::rand::Rng;
-use ark_std::{One, UniformRand};
-use groth_sahai::prover::CProof;
-use groth_sahai::CRS;
+use ark_ec::{pairing::Pairing, AffineRepr};
+use ark_std::{rand::Rng, One, UniformRand};
+use groth_sahai::{prover::CProof, CRS};
 use std::ops::{Mul, Neg};
 
 use crate::lhsps;
@@ -51,7 +48,7 @@ impl<E: Pairing> EncryptKey<E> {
             &self.crs,
             self.g,
             self.crs.g2_gen.mul(b.neg()).into(),
-            self.g.mul(b).into(),
+            self.g, // g^b = g
             self.crs.g2_gen,
         )
         .unwrap();
@@ -77,16 +74,12 @@ impl<E: Pairing> EncryptKey<E> {
         // v = [c_0^b, c_1^b, g^(1-b), c_2^(1-b), ..., c_n+1^(1-b)]
         //   = [c_0, c_1, 1, 1, ..., 1]
         let mut v = vec![
-            c[0].mul(b).into(),
-            c[1].mul(b).into(),
-            self.g.mul(E::ScalarField::one() + b.neg()).into(),
+            c[0],                // c_0^b = c_0
+            c[1],                // c_1^b = c_1
+            E::G1Affine::zero(), // g^(1-b) = 1
         ];
-        v.extend(
-            c.iter()
-                .skip(3)
-                .map(|c_i| c_i.mul(E::ScalarField::one() + b.neg()).into())
-                .collect::<Vec<_>>(),
-        );
+        v.extend(vec![E::G1Affine::zero(); c.len() - 2]); // c_2^(1-b) = 1, ..., c_n+1^(1-b) = 1
+
         // generate lhsps signature on v = v1^phi + v2 ^ 0 = v1^phi, hence only lhsps_sig_v1 is needed
         let sig_with_w = vec![(phi, self.lhsps_sig_v1)];
         let sigv = self.lhsps_vk.sign_derive(&sig_with_w).unwrap();
@@ -99,12 +92,8 @@ impl<E: Pairing> EncryptKey<E> {
 
         // generate proof of (f^b, g^b, h_1^b, ..., h_n^b)
         let mut fgh = vec![self.f.mul(b).into(), self.g.mul(b).into()];
-        fgh.extend(
-            self.h
-                .iter()
-                .map(|h_i| h_i.mul(b).into())
-                .collect::<Vec<_>>(),
-        );
+        fgh.extend(self.h.iter()); // h_i^b = h_i
+
         // generate gs-proof of:
         // 1. e(f^b, g2) + e(f, g2^-b) = 0
         // 2. e(g^b, g2) + e(g, g2^-b) = 0 (i.e. cpf_b)
@@ -118,7 +107,7 @@ impl<E: Pairing> EncryptKey<E> {
                     &self.crs,
                     *fgh_i,
                     self.crs.g2_gen.mul(b.neg()).into(),
-                    fgh_i.mul(b).into(),
+                    *fgh_i, // fgh_i^b = fgh_i
                     self.crs.g2_gen,
                 )
                 .unwrap()
@@ -128,16 +117,11 @@ impl<E: Pairing> EncryptKey<E> {
         // w = (f^b, g^b, 1, h_1^(1-b), ..., h_n^(1-b))
         //   = (f, g, 1, 1, ..., 1)
         let mut w = vec![
-            self.f.mul(b).into(),
-            self.g.mul(b).into(),
+            self.f, // f^b = f
+            self.g, // g^b = g
             E::G1Affine::zero(),
         ];
-        w.extend(
-            self.h
-                .iter()
-                .map(|h_i| h_i.mul(E::ScalarField::one() + b.neg()).into())
-                .collect::<Vec<_>>(),
-        );
+        w.extend(vec![E::G1Affine::zero(); c.len() - 2]); // h_i^(1-b) = 1
 
         // generate lhsps signature on w = v1^b + v2^0 = v1^b, hence only lhsps_sig_v1 is needed
         let sig_with_w = vec![(b, self.lhsps_sig_v1)];
