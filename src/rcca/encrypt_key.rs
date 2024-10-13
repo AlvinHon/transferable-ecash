@@ -1,4 +1,5 @@
 use ark_ec::{pairing::Pairing, AffineRepr};
+use ark_std::rand::RngCore;
 use ark_std::{rand::Rng, One, UniformRand};
 use groth_sahai::{prover::CProof, CRS};
 use std::ops::{Mul, Neg};
@@ -146,23 +147,46 @@ impl<E: Pairing> EncryptKey<E> {
 
     /// Re-randomize a ciphertext.
     ///
-    /// A randomized algorithm which mutates the input ciphertext `c` with some randomness `v`.
-    pub fn rerandomize(&self, c: &mut Ciphertext<E>, v: &[E::G1Affine]) {
+    /// A randomized algorithm which mutates the input ciphertext `c` with some randomness.
+    pub fn rerandomize<R: RngCore>(&self, rng: &mut R, c: &mut Ciphertext<E>) {
+        let v = E::ScalarField::rand(rng);
+        // c_0' = c_0 * f^v, c_1' = c_1 * g^v, c_i' = c_i * h_i^v
+        c.c[0] = (c.c[0] + self.f.mul(v)).into();
+        c.c[1] = (c.c[1] + self.g.mul(v)).into();
+        c.c[2..]
+            .iter_mut()
+            .zip(self.h.iter())
+            .for_each(|(ci, hi)| *ci = (*ci + hi.mul(v)).into());
+        // randomize proofs: cpf_b, cpf_ps using cpf_fgh
+        // TODO
+
+        // update proof cpf_v
+        // TODO
+
+        // randomize proofs: cpf_b', cpf_ps' cpf_v', cpf_fgh, cpf_w
+        // TODO
+
         todo!()
     }
 
-    /// Verify a ciphertext.
+    /// Check if the ciphertext encrypts a given message.
     ///
     /// A deterministic algorithm which takes as input,
     /// - a message `m`,
-    /// - some randomness `v` (same length as `m`),
     /// - a ciphertext `c`m
     ///
     /// and outputs a bit.
-    pub fn verify(&self, m: &[E::G1Affine], v: &[E::G1Affine], c: &Ciphertext<E>) -> bool {
-        todo!()
+    pub fn verify(&self, _m: &[E::G1Affine], c: &Ciphertext<E>) -> bool {
+        if c.check_proofs(self).is_err() {
+            return false;
+        }
+        // check equations: c_0=g^v, c_1=f^v, c_i=h_i^v + m_i
+        // TODO
+        true
     }
 
+    /// Adapt a proof to a rerandomization.
+    ///
     /// A randomized algorithm which takes as input,
     /// - a commitment key,
     /// - an encryption public key,
@@ -173,7 +197,7 @@ impl<E: Pairing> EncryptKey<E> {
     /// - some randomness,
     ///
     /// and outputs an equality proof.
-    pub fn adapt_proof(&self) {
+    pub fn adapt_proof<R: RngCore>(&self, rng: &mut R, c: &Ciphertext<E>) {
         todo!()
     }
 }
