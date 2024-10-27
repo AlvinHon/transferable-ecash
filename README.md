@@ -4,12 +4,13 @@ A rust implementation of Transferable e-cash according to the paper [Anonymous T
 
 ****some minor parts have been modified/TBC***
 
-> Transferable e-cash is the digital analog of physical cash, which allows users to transfer coins between them in isolation without interacting with a bank or a “ledger”. 
-It protects user privacy and, provides means to trace fraudulent behavior (double-spending of coins).
+> Transferable e-cash is the digital analog of physical cash, which allows users to transfer coins between them in isolation without interacting with a bank or a “ledger”. It protects user privacy and, provides means to trace fraudulent behavior (double-spending of coins).
 
 The entire work consists of some building blocks. The current progress towards their completeness:
 
 - [x] Double Spending Tag
+- [ ] M-structure-preserving signature scheme S
+    - [ ] M-commuting signatures 
 - [ ] Encryption Scheme E' (Replayable-CCA encryption scheme)
     - [X] One-time linearly homomorphic structure-preserving signature
 - [ ] Encryption Scheme E

@@ -40,8 +40,8 @@ pub(crate) fn create_proof_ayxb<E: Pairing, R: RngCore>(
         gamma,
         target,
     };
-    let proof: CProof<E> = equ.commit_and_prove(&xvars, &yvars, &crs, rng);
-    equ.verify(&proof, &crs).then(|| proof).ok_or(())
+    let proof: CProof<E> = equ.commit_and_prove(&xvars, &yvars, crs, rng);
+    equ.verify(&proof, crs).then_some(proof).ok_or(())
 }
 
 /// Check GS proof for pairing product equation: e(A, Y) + e(X, B) = 0,
@@ -74,7 +74,7 @@ pub(crate) fn check_proof_ayxb<E: Pairing>(
         target,
     };
 
-    equ.verify(&cp, &crs)
+    equ.verify(cp, crs)
 }
 
 /// Create GS proof for pairing product equation: e(X1, B1) + e(X2, B2) = T.
@@ -109,8 +109,8 @@ pub(crate) fn create_proof_xbxb_t<E: Pairing, R: RngCore>(
         gamma,
         target,
     };
-    let proof: CProof<E> = equ.commit_and_prove(&xvars, &yvars, &crs, rng);
-    equ.verify(&proof, &crs).then(|| proof).ok_or(())
+    let proof: CProof<E> = equ.commit_and_prove(&xvars, &yvars, crs, rng);
+    equ.verify(&proof, crs).then_some(proof).ok_or(())
 }
 
 /// Check GS proof for pairing product equation: e(X1, B1) + e(X2, B2) = T.
@@ -146,5 +146,5 @@ pub(crate) fn check_proof_xbxb_t<E: Pairing>(
         target: t,
     };
 
-    equ.verify(&cp, &crs)
+    equ.verify(cp, crs)
 }

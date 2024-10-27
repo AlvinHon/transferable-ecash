@@ -30,8 +30,8 @@ pub fn key_gen<E: Pairing, R: RngCore>(rng: &mut R) -> (DecryptKey<E>, EncryptKe
     let dk1 = bls_elgamal::DecryptKey::new(g, dk1);
     let dk2 = bls_elgamal::DecryptKey::new(g, dk2);
 
-    let ek1 = dk1.encrypt_key().clone();
-    let ek2 = dk2.encrypt_key().clone();
+    let ek1 = *dk1.encrypt_key();
+    let ek2 = *dk2.encrypt_key();
     (
         DecryptKey { inner: (dk1, dk2) },
         EncryptKey { inner: (ek1, ek2) },

@@ -7,7 +7,7 @@ pub struct Ciphertext<E: Pairing> {
     pub c2: E::G1Affine,
 }
 
-impl<'a, E: Pairing>
+impl<E: Pairing>
     From<(
         bls_elgamal::Ciphertext<E::G1>,
         bls_elgamal::Ciphertext<E::G1>,
