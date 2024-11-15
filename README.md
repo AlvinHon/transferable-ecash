@@ -9,8 +9,8 @@ A rust implementation of Transferable e-cash according to the paper [Anonymous T
 The entire work consists of some building blocks. The current progress towards their completeness:
 
 - [x] Double Spending Tag
-- [ ] M-structure-preserving signature scheme S
-    - [ ] M-commuting signatures 
+- [X] M-structure-preserving signature scheme S (complete in a separate repo [here](https://github.com/AlvinHon/commuting-signature))
+    - [X] M-commuting signatures 
 - [ ] Encryption Scheme E' (Replayable-CCA encryption scheme)
     - [X] One-time linearly homomorphic structure-preserving signature
 - [ ] Encryption Scheme E
