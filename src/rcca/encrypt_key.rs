@@ -1,6 +1,6 @@
 use ark_ec::{pairing::Pairing, AffineRepr};
 use ark_std::rand::RngCore;
-use ark_std::{rand::Rng, One, UniformRand};
+use ark_std::{rand::Rng, One};
 use std::ops::{Mul, Neg};
 
 use crate::lhsps;
@@ -25,11 +25,15 @@ impl<E: Pairing> EncryptKey<E> {
     ///
     /// A randomized encryption algorithm which takes as input,
     /// - a message `m`,
-    /// - some randomness `rng`,
+    /// - randomness v (`phi`),
     ///
     /// and outputs a ciphertext.
-    pub fn encrypt<R: Rng>(&self, rng: &mut R, m: &[E::G1Affine]) -> Ciphertext<E> {
-        let phi = E::ScalarField::rand(rng);
+    pub fn encrypt<R: Rng>(
+        &self,
+        rng: &mut R,
+        phi: E::ScalarField,
+        m: &[E::G1Affine],
+    ) -> Ciphertext<E> {
         // c = [c0, c1, ..., cn+1]
         //   = [f^phi, g^phi, m1^phi + h1^phi, m2^phi + h2^phi, ..., mn^phi + hn^phi]
         let mut c = vec![self.f.mul(phi).into(), self.g.mul(phi).into()];
@@ -137,9 +141,8 @@ impl<E: Pairing> EncryptKey<E> {
 
     /// Re-randomize a ciphertext.
     ///
-    /// A randomized algorithm which mutates the input ciphertext `c` with some randomness.
-    pub fn rerandomize<R: RngCore>(&self, rng: &mut R, c: &mut Ciphertext<E>) {
-        let v = E::ScalarField::rand(rng);
+    /// A randomized algorithm which mutates the input ciphertext `c` with randomness v.
+    pub fn rerandomize<R: RngCore>(&self, rng: &mut R, v: E::ScalarField, c: &mut Ciphertext<E>) {
         // c_0' = c_0 * f^v, c_1' = c_1 * g^v, c_i' = c_i * h_i^v
         c.c[0] = (c.c[0] + self.f.mul(v)).into();
         c.c[1] = (c.c[1] + self.g.mul(v)).into();
@@ -155,23 +158,39 @@ impl<E: Pairing> EncryptKey<E> {
 
         // randomize proofs: cpf_b', cpf_ps' cpf_v', cpf_fgh, cpf_w
         // TODO
-
-        todo!()
     }
 
     /// Check if the ciphertext encrypts a given message.
     ///
     /// A deterministic algorithm which takes as input,
     /// - a message `m`,
+    /// - the randomness `v` used in encryption (or the randomness updated due to rerandomization),
     /// - a ciphertext `c`m
     ///
     /// and outputs a bit.
-    pub fn verify(&self, _m: &[E::G1Affine], c: &Ciphertext<E>) -> bool {
+    pub fn verify(&self, m: &[E::G1Affine], v: E::ScalarField, c: &Ciphertext<E>) -> bool {
         if c.check_proofs(self).is_err() {
             return false;
         }
-        // check equations: c_0=g^v, c_1=f^v, c_i=h_i^v + m_i
-        // TODO
+
+        // ** this is different from the version that I read. I guess there is typo on the paper. **
+        // ** Original: c_0=g^v, c_1=f^v, c_i=h_i^v + m_i **
+        // check equations: c_0=f^v, c_1=g^v, c_i=h_i^v + m_i
+        if c.c[0] != self.f.mul(v).into() {
+            return false;
+        }
+        if c.c[1] != self.g.mul(v).into() {
+            return false;
+        }
+
+        if c.c[2..]
+            .iter()
+            .zip(self.h.iter())
+            .zip(m.iter())
+            .any(|((ci, hi), mi)| *ci != (hi.mul(v) + mi).into())
+        {
+            return false;
+        }
         true
     }
 

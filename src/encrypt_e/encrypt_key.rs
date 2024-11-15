@@ -137,6 +137,18 @@ impl<E: Pairing> EncryptKey<E> {
         self.encrypt_with(m1, m2, v) == *c
     }
 
+    /// Adapt a proof to a rerandomization.
+    ///
+    /// A randomized algorithm which takes as input,
+    /// - a commitment key,
+    /// - an encryption public key,
+    /// - a commitment,
+    /// - an equality proof (i.e a Groth-Sahai proof and a commitment),
+    /// - a ciphertext,
+    /// - a proof,
+    /// - some randomness,
+    ///
+    /// and outputs an equality proof.
     pub fn adapt_proof(&self) {
         todo!()
     }

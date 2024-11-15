@@ -79,14 +79,20 @@ mod tests {
 
     type E = Bls12_381;
     type G1 = <E as Pairing>::G1Affine;
+    type Fr = <E as Pairing>::ScalarField;
 
     #[test]
     fn debug_test() {
         let rng = &mut ark_std::test_rng();
         let (sk, pk) = key_gen::<E, _>(rng, 5);
         let m = (0..5).map(|_| G1::rand(rng)).collect::<Vec<_>>();
-        let c = pk.encrypt(rng, &m);
+
+        let v = Fr::rand(rng);
+
+        let c = pk.encrypt(rng, v, &m);
         let m_d = sk.decrypt(&c).unwrap();
         assert_eq!(m, m_d);
+
+        assert!(pk.verify(&m, v, &c));
     }
 }
