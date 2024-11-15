@@ -7,24 +7,15 @@ use ark_ec::{pairing::Pairing, AffineRepr};
 use ark_std::{ops::Mul, rand::RngCore, UniformRand};
 use decrypt_key::DecryptKey;
 use encrypt_key::EncryptKey;
-use groth_sahai::{AbstractCrs, CRS};
 
-use crate::lhsps;
+use crate::{lhsps, proof::CRS};
 
 pub mod ciphertext;
 pub mod decrypt_key;
 pub mod encrypt_key;
 
 pub fn key_gen<E: Pairing, R: RngCore>(rng: &mut R, n: usize) -> (DecryptKey<E>, EncryptKey<E>) {
-    let crs = CRS::<E>::generate_crs(rng);
-    let crs_cloned = // TODO derive Clone for CRS
-        CRS::<E> {
-            u: crs.u.clone(),
-            v: crs.v.clone(),
-            g1_gen: crs.g1_gen,
-            g2_gen: crs.g2_gen,
-            gt_gen: crs.gt_gen,
-        };
+    let crs = CRS::rand(rng);
 
     let f = E::G1Affine::rand(rng);
     let g = E::G1Affine::rand(rng);
@@ -58,7 +49,7 @@ pub fn key_gen<E: Pairing, R: RngCore>(rng: &mut R, n: usize) -> (DecryptKey<E>,
                 f,
                 g,
                 h: h.clone(),
-                crs: crs_cloned,
+                crs: crs.clone(),
                 lhsps_sig_v1,
                 lhsps_sig_v2,
                 lhsps_vk: lhsps_vk.clone(),

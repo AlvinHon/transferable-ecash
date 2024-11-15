@@ -1,11 +1,10 @@
 use ark_ec::{pairing::Pairing, AffineRepr};
 use ark_std::rand::RngCore;
 use ark_std::{rand::Rng, One, UniformRand};
-use groth_sahai::{prover::CProof, CRS};
 use std::ops::{Mul, Neg};
 
 use crate::lhsps;
-use crate::proof::create_proof_ayxb;
+use crate::proof::{create_proof_ayxb, CProof, CRS};
 
 use super::ciphertext::Ciphertext;
 
@@ -51,8 +50,7 @@ impl<E: Pairing> EncryptKey<E> {
             self.crs.g2_gen.mul(b.neg()).into(),
             self.g, // g^b = g
             self.crs.g2_gen,
-        )
-        .unwrap();
+        );
         // generate gs-proof of e(ps_i, g2) + e(ci, g2^-b) = 0
         let cpf_ps: Vec<CProof<E>> = c
             .iter()
@@ -69,7 +67,6 @@ impl<E: Pairing> EncryptKey<E> {
                     ps_i,
                     self.crs.g2_gen,
                 )
-                .unwrap()
             })
             .collect();
         // v = [c_0^b, c_1^b, g^(1-b), c_2^(1-b), ..., c_n+1^(1-b)]
@@ -86,10 +83,7 @@ impl<E: Pairing> EncryptKey<E> {
         let sigv = self.lhsps_vk.sign_derive(&sig_with_w).unwrap();
 
         // generate proof of validity of lhsps signature on v
-        let cpf_v = self
-            .lhsps_vk
-            .generate_proof(rng, &self.crs, &v, &sigv)
-            .unwrap();
+        let cpf_v = self.lhsps_vk.generate_proof(rng, &self.crs, &sigv);
 
         // generate proof of (f^b, g^b, h_1^b, ..., h_n^b)
         let mut fgh = vec![self.f.mul(b).into(), self.g.mul(b).into()];
@@ -111,7 +105,6 @@ impl<E: Pairing> EncryptKey<E> {
                     *fgh_i, // fgh_i^b = fgh_i
                     self.crs.g2_gen,
                 )
-                .unwrap()
             })
             .collect();
 
@@ -129,10 +122,7 @@ impl<E: Pairing> EncryptKey<E> {
         let sigw = self.lhsps_vk.sign_derive(&sig_with_w).unwrap();
 
         // generate proof of validity of lhsps signature on w
-        let cpf_w = self
-            .lhsps_vk
-            .generate_proof(rng, &self.crs, &w, &sigw)
-            .unwrap();
+        let cpf_w = self.lhsps_vk.generate_proof(rng, &self.crs, &sigw);
 
         // Output ciphertext c = (ci for i in 1..n, cpf_b, cpf_ps, cpf_v, cpf_fgh, cpf_w)
         Ciphertext {

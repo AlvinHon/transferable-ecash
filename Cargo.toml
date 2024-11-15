@@ -14,12 +14,11 @@ name = "transferable_ecash"
 path = "src/lib.rs"
 
 [dependencies]
-ark-ec = "0.4"
-ark-ff = "0.4"
-ark-serialize = "0.4"
-ark-std = "0.4"
+ark-ec = "0.5"
+ark-serialize = "0.5"
+ark-std = "0.5"
 bls-elgamal = {git="https://github.com/AlvinHon/bls-elgamal"}
-groth-sahai = {git="https://github.com/AlvinHon/groth-sahai-rs"}
+gs-ppe = {git="https://github.com/AlvinHon/gs-ppe"}
 
 [dev-dependencies]
-ark-bls12-381 = "0.4"
+ark-bls12-381 = "0.5"

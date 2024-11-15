@@ -1,8 +1,6 @@
 use ark_ec::{pairing::Pairing, AffineRepr};
 
-use groth_sahai::prover::CProof;
-
-use crate::proof::check_proof_ayxb;
+use crate::proof::{check_proof_ayxb, CProof};
 
 use super::encrypt_key::EncryptKey;
 
