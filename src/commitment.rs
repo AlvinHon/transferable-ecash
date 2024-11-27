@@ -5,7 +5,7 @@ use ark_std::{rand::Rng, One, Zero};
 use gs_ppe::{Com, CommitmentKeys, Equation, Matrix, Proof, ProofSystem, Variable};
 use std::ops::Mul;
 
-use crate::double_spending::{self as T};
+use crate::double_spending::{self as T, serial_number::SerialNumberProof};
 
 pub(crate) struct C<E: Pairing> {
     cks: CommitmentKeys<E>,
@@ -36,11 +36,10 @@ impl<E: Pairing> C<E> {
         // e(M2, g) == e(g1, M2)
 
         let T::DSParams { g, g1, g2, .. } = ds_params;
-        let n = sn.n;
         let pk = pk.pk;
 
         // 1.
-        let var_n = Variable::new(rng, n);
+        let var_n = Variable::new(rng, sn.n);
         let var_m1 = Variable::new(rng, msgs.0.n);
         let var_pk = Variable::new(rng, pk);
         let neg_g2 = g2.mul(-E::ScalarField::one()).into();
@@ -108,7 +107,7 @@ impl<E: Pairing> C<E> {
     pub(crate) fn verify_init_serial_number(
         &self,
         ds_params: &T::DSParams<E>,
-        proofs: &SnInitProof<E>,
+        proof: &SnInitProof<E>,
     ) -> bool {
         let T::DSParams { g, g1, g2, .. } = ds_params;
 
@@ -121,7 +120,7 @@ impl<E: Pairing> C<E> {
             PairingOutput::zero(),
         );
 
-        if !eq1.verify(&self.cks, &proofs.c1, &proofs.d1, &proofs.proof1) {
+        if !eq1.verify(&self.cks, &proof.c1, &proof.d1, &proof.proof1) {
             return false;
         }
 
@@ -134,7 +133,7 @@ impl<E: Pairing> C<E> {
             PairingOutput::zero(),
         );
 
-        if !eq2.verify(&self.cks, &proofs.c2, &proofs.d2, &proofs.proof2) {
+        if !eq2.verify(&self.cks, &proof.c2, &proof.d2, &proof.proof2) {
             return false;
         }
 
@@ -146,7 +145,101 @@ impl<E: Pairing> C<E> {
             PairingOutput::zero(),
         );
 
-        eq3.verify(&self.cks, &proofs.c3, &proofs.d3, &proofs.proof3)
+        eq3.verify(&self.cks, &proof.c3, &proof.d3, &proof.proof3)
+    }
+
+    /// `C.Prv_sn`
+    pub(crate) fn prove_serial_number<R: Rng>(
+        &self,
+        rng: &mut R,
+        ds_params: &T::DSParams<E>,
+        pk: &T::PublicKey<E>,
+        sn: &T::SerialNumber<E>,
+        sn_pf: &SerialNumberProof<E>,
+    ) -> SnProof<E> {
+        // Constructs the GS proof of the following equations (which are used in the `verify_first_serial_number` function):
+        // e(N, g) + e(g2^-1, sn-pf) + e(g2^-1, pk) == 1
+        // e(M, g) + e(g1^-1, sn-pf) == 1
+
+        let T::DSParams { g, g1, g2, .. } = ds_params;
+        let pk = pk.pk;
+
+        // 1.
+        let var_n = Variable::new(rng, sn.n);
+        let var_sn_pf = Variable::new(rng, sn_pf.sn_pf);
+        let var_pk = Variable::new(rng, pk);
+        let neg_g2 = g2.mul(-E::ScalarField::one()).into();
+        let ProofSystem {
+            c: c1,
+            d: d1,
+            proof: proof1,
+            ..
+        } = gs_ppe::setup(
+            rng,
+            &self.cks,
+            &[(neg_g2, var_sn_pf), (neg_g2, var_pk)],
+            &[(var_n, *g)],
+            &Matrix::new(&[[E::ScalarField::zero(), E::ScalarField::zero()]]), // dim = 1x2
+        );
+
+        // 2.
+        let var_m = Variable::new(rng, sn.m);
+        let var_sn_pf = Variable::new(rng, sn_pf.sn_pf);
+        let neg_g1 = g1.mul(-E::ScalarField::one()).into();
+        let ProofSystem {
+            c: c2,
+            d: d2,
+            proof: proof2,
+            ..
+        } = gs_ppe::setup(
+            rng,
+            &self.cks,
+            &[(neg_g1, var_sn_pf)],
+            &[(var_m, *g)],
+            &Matrix::new(&[[E::ScalarField::zero()]]), // dim = 1x1
+        );
+
+        SnProof {
+            c1,
+            d1,
+            proof1,
+            c2,
+            d2,
+            proof2,
+        }
+    }
+
+    /// `C.Verify_sn`
+    pub(crate) fn verify_serial_number(
+        &self,
+        ds_params: &T::DSParams<E>,
+        proof: &SnProof<E>,
+    ) -> bool {
+        let T::DSParams { g, g1, g2, .. } = ds_params;
+
+        // 1.
+        let neg_g2 = g2.mul(-E::ScalarField::one()).into();
+        let eq1 = Equation::<E>::new(
+            vec![neg_g2, neg_g2],
+            vec![*g],
+            Matrix::new(&[[E::ScalarField::zero(), E::ScalarField::zero()]]),
+            PairingOutput::zero(),
+        );
+
+        if !eq1.verify(&self.cks, &proof.c1, &proof.d1, &proof.proof1) {
+            return false;
+        }
+
+        // 2.
+        let neg_g1 = g1.mul(-E::ScalarField::one()).into();
+        let eq2 = Equation::<E>::new(
+            vec![neg_g1],
+            vec![*g],
+            Matrix::new(&[[E::ScalarField::zero()]]),
+            PairingOutput::zero(),
+        );
+
+        eq2.verify(&self.cks, &proof.c2, &proof.d2, &proof.proof2)
     }
 }
 
@@ -166,6 +259,19 @@ pub(crate) struct SnInitProof<E: Pairing> {
     pub(crate) c3: Vec<Com<<E as Pairing>::G1>>,
     pub(crate) d3: Vec<Com<<E as Pairing>::G2>>,
     pub(crate) proof3: Proof<E>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct SnProof<E: Pairing> {
+    // e(N, g) + e(g2^-1, sn-pf) + e(g2^-1, pk) == 1
+    pub(crate) c1: Vec<Com<<E as Pairing>::G1>>,
+    pub(crate) d1: Vec<Com<<E as Pairing>::G2>>,
+    pub(crate) proof1: Proof<E>,
+
+    // e(M, g) + e(g1^-1, sn-pf) == 1
+    pub(crate) c2: Vec<Com<<E as Pairing>::G1>>,
+    pub(crate) d2: Vec<Com<<E as Pairing>::G2>>,
+    pub(crate) proof2: Proof<E>,
 }
 
 #[cfg(test)]
@@ -194,7 +300,25 @@ mod tests {
 
         let c = C::<E>::setup(rng);
 
-        let proofs = c.prove_init_serial_number(rng, &ds_params, &pk, &sn, &msgs);
-        assert!(c.verify_init_serial_number(&ds_params, &proofs));
+        let proof = c.prove_init_serial_number(rng, &ds_params, &pk, &sn, &msgs);
+        assert!(c.verify_init_serial_number(&ds_params, &proof));
+    }
+
+    #[test]
+    fn test_c_prv_sn() {
+        let rng = &mut test_rng();
+
+        let ds_params = DSParams::<E>::rand(rng);
+        let (sk, pk) = key_gen(rng, &ds_params);
+
+        let n = Fr::rand(rng);
+
+        let (sn, sn_pf) = sk.generate_serial_number(&ds_params, n);
+        assert!(pk.verify_serial_number(&ds_params, &sn, &sn_pf));
+
+        let c = C::<E>::setup(rng);
+
+        let proof = c.prove_serial_number(rng, &ds_params, &pk, &sn, &sn_pf);
+        assert!(c.verify_serial_number(&ds_params, &proof));
     }
 }
