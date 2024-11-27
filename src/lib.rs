@@ -4,7 +4,6 @@
 pub mod double_spending;
 pub mod encrypt_e;
 pub mod lhsps;
-pub mod params;
 pub(crate) mod proof;
 pub use proof::{CProof, CRS};
 pub mod rcca;

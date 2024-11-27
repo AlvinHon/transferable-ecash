@@ -1,10 +1,9 @@
 use ark_ec::pairing::Pairing;
 use std::ops::Mul;
 
-use crate::params::Params;
-
 use super::{
     message::Message,
+    params::DSParams,
     serial_number::{SerialNumber, SerialNumberProof},
     tag::{Tag, TagProof},
 };
@@ -20,7 +19,7 @@ impl<E: Pairing> SecretKey<E> {
     /// signed by the bank using a signature scheme.
     pub fn init_serial_number(
         &self,
-        params: &Params<E>,
+        params: &DSParams<E>,
         n: E::ScalarField,
     ) -> (SerialNumber<E>, (Message<E>, Message<E>)) {
         // m = g1^n, n = g2^(n+sk)
@@ -43,7 +42,7 @@ impl<E: Pairing> SecretKey<E> {
     /// a nonce, outputs a serial-number component and a proof of well-formedness.
     pub fn generate_serial_number(
         &self,
-        params: &Params<E>,
+        params: &DSParams<E>,
         n: E::ScalarField,
     ) -> (SerialNumber<E>, SerialNumberProof<E>) {
         // m = g1^n, n = g2^(n+sk)
@@ -63,7 +62,7 @@ impl<E: Pairing> SecretKey<E> {
     /// and a tag proof.
     pub fn generate_tag(
         &self,
-        params: &Params<E>,
+        params: &DSParams<E>,
         n: E::ScalarField,
         sn: &SerialNumber<E>,
     ) -> (Tag<E>, TagProof<E>) {

@@ -3,11 +3,10 @@ use ark_ec::AffineRepr;
 use ark_std::Zero;
 use std::ops::Neg;
 
-use crate::params::Params;
-
 use super::{
     detect::DetectionProof,
     message::Message,
+    params::DSParams,
     serial_number::{SerialNumber, SerialNumberProof},
     tag::{Tag, TagProof},
 };
@@ -23,7 +22,7 @@ impl<E: Pairing> PublicKey<E> {
     }
 
     /// The incrimination-proof verification function.
-    pub fn verify_guilt(&self, params: &Params<E>, proof: &DetectionProof<E>) -> bool {
+    pub fn verify_guilt(&self, params: &DSParams<E>, proof: &DetectionProof<E>) -> bool {
         // ** this is different from the version that I read. I guess there is a missing part on the paper. **
         // ** Original: e(ax, g) == e(mx, pk) **
         // e(ax, g) == e(mx, pk) + e(hx, tx)
@@ -36,7 +35,7 @@ impl<E: Pairing> PublicKey<E> {
     /// On input a public key, a serial number and a message, checks their consistency.
     pub fn verify_first_serial_number(
         &self,
-        params: &Params<E>,
+        params: &DSParams<E>,
         sn: &SerialNumber<E>,
         msgs: &(Message<E>, Message<E>),
     ) -> bool {
@@ -75,7 +74,7 @@ impl<E: Pairing> PublicKey<E> {
     /// On input a public key and a serial number, checks their consistency.
     pub fn verify_serial_number(
         &self,
-        params: &Params<E>,
+        params: &DSParams<E>,
         sn: &SerialNumber<E>,
         sn_pf: &SerialNumberProof<E>,
     ) -> bool {
@@ -99,7 +98,7 @@ impl<E: Pairing> PublicKey<E> {
     /// checks consistency of the tag w.r.t the key and the serial numbers.
     pub fn verify_tag(
         &self,
-        params: &Params<E>,
+        params: &DSParams<E>,
         sn: &SerialNumber<E>,
         sn_d: &SerialNumber<E>,
         tag: &Tag<E>,

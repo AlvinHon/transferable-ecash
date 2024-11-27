@@ -3,15 +3,15 @@ use ark_ec::AffineRepr;
 use std::ops::Neg;
 
 use super::{
+    params::DSParams,
     public_key::PublicKey,
     serial_number::SerialNumber,
     tag::{Tag, TagProof},
 };
-use crate::params::Params;
 
 pub fn detect<E: Pairing, S: Searcher<E>>(
     searcher: &S,
-    params: &Params<E>,
+    params: &DSParams<E>,
     sn0: &SerialNumber<E>,
     sn1: &SerialNumber<E>,
     tag0: &Tag<E>,

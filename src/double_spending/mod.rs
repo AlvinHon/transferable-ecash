@@ -6,6 +6,7 @@
 
 pub mod detect;
 pub mod message;
+pub mod params;
 pub mod public_key;
 pub mod secret_key;
 pub mod serial_number;
@@ -16,14 +17,13 @@ use ark_std::rand::RngCore;
 use ark_std::UniformRand;
 use std::ops::Mul;
 
+use params::DSParams;
 use public_key::PublicKey;
 use secret_key::SecretKey;
 
-use crate::params::Params;
-
 pub fn key_gen<E: Pairing, R: RngCore>(
     rng: &mut R,
-    params: &Params<E>,
+    params: &DSParams<E>,
 ) -> (SecretKey<E>, PublicKey<E>) {
     let sk = E::ScalarField::rand(rng);
     let pk = params.g.mul(sk).into();
@@ -37,7 +37,7 @@ mod tests {
     use ark_std::{One, UniformRand};
 
     use crate::double_spending::detect::detect;
-    use crate::double_spending::{key_gen, Params};
+    use crate::double_spending::{key_gen, DSParams};
 
     use super::detect::Searcher;
     use super::PublicKey;
@@ -61,7 +61,7 @@ mod tests {
     #[test]
     fn test_detect() {
         let rng = &mut test_rng();
-        let params = Params::<E>::rand(rng);
+        let params = DSParams::<E>::rand(rng);
         let (sk, pk) = key_gen(rng, &params);
         let searcher = SearcherImpl {
             pks: vec![pk.clone()],
@@ -96,7 +96,7 @@ mod tests {
         type Fr = <E as Pairing>::ScalarField;
 
         let rng = &mut test_rng();
-        let params = Params::<E>::rand(rng);
+        let params = DSParams::<E>::rand(rng);
         let (sk, pk) = key_gen(rng, &params);
         let (sk2, pk2) = key_gen(rng, &params);
         let n = Fr::rand(rng);
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn test_2_show_extractability() {
         let rng = &mut test_rng();
-        let params = Params::<E>::rand(rng);
+        let params = DSParams::<E>::rand(rng);
         let (sk, pk) = key_gen(rng, &params);
         let (sk1, pk1) = (sk.clone(), pk.clone());
         let (sk2, pk2) = (sk.clone(), pk.clone());
