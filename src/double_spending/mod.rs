@@ -6,20 +6,21 @@
 
 pub mod detect;
 pub mod message;
+pub use message::Message;
 pub mod params;
+pub use params::DSParams;
 pub mod public_key;
+pub use public_key::PublicKey;
 pub mod secret_key;
+pub use secret_key::SecretKey;
 pub mod serial_number;
+pub use serial_number::SerialNumber;
 pub mod tag;
 
 use ark_ec::pairing::Pairing;
 use ark_std::rand::RngCore;
 use ark_std::UniformRand;
 use std::ops::Mul;
-
-use params::DSParams;
-use public_key::PublicKey;
-use secret_key::SecretKey;
 
 pub fn key_gen<E: Pairing, R: RngCore>(
     rng: &mut R,
