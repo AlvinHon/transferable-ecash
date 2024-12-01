@@ -16,6 +16,7 @@ pub use secret_key::SecretKey;
 pub mod serial_number;
 pub use serial_number::SerialNumber;
 pub mod tag;
+pub use tag::{Tag, TagProof};
 
 use ark_ec::pairing::Pairing;
 use ark_std::rand::RngCore;
