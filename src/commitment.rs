@@ -29,7 +29,7 @@ impl<E: Pairing> C<E> {
         pk: &T::PublicKey<E>,
         sn: &T::SerialNumber<E>,
         msgs: &(T::Message<E>, T::Message<E>),
-    ) -> SnInitProof<E> {
+    ) -> SnInitZkProof<E> {
         // Constructs the GS proof of the following equations (which are used in the `verify_first_serial_number` function):
         // e(N, g) + e(g2^-1, M1) + e(g2^-1, pk) == 1
         // e(M1, g) == e(g1, M1)
@@ -90,7 +90,7 @@ impl<E: Pairing> C<E> {
             &Matrix::new(&[[E::ScalarField::zero()]]), // dim = 1x1
         );
 
-        SnInitProof {
+        SnInitZkProof {
             c1,
             d1,
             proof1,
@@ -107,7 +107,7 @@ impl<E: Pairing> C<E> {
     pub(crate) fn verify_init_serial_number(
         &self,
         ds_params: &T::DSParams<E>,
-        proof: &SnInitProof<E>,
+        proof: &SnInitZkProof<E>,
     ) -> bool {
         let T::DSParams { g, g1, g2, .. } = ds_params;
 
@@ -156,7 +156,7 @@ impl<E: Pairing> C<E> {
         pk: &T::PublicKey<E>,
         sn: &T::SerialNumber<E>,
         sn_pf: &SerialNumberProof<E>,
-    ) -> SnProof<E> {
+    ) -> SnZkProof<E> {
         // Constructs the GS proof of the following equations (which are used in the `verify_serial_number` function):
         // e(N, g) + e(g2^-1, sn-pf) + e(g2^-1, pk) == 1
         // e(M, g) + e(g1^-1, sn-pf) == 1
@@ -199,7 +199,7 @@ impl<E: Pairing> C<E> {
             &Matrix::new(&[[E::ScalarField::zero()]]), // dim = 1x1
         );
 
-        SnProof {
+        SnZkProof {
             c1,
             d1,
             proof1,
@@ -213,7 +213,7 @@ impl<E: Pairing> C<E> {
     pub(crate) fn verify_serial_number(
         &self,
         ds_params: &T::DSParams<E>,
-        proof: &SnProof<E>,
+        proof: &SnZkProof<E>,
     ) -> bool {
         let T::DSParams { g, g1, g2, .. } = ds_params;
 
@@ -396,7 +396,7 @@ impl<E: Pairing> C<E> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct SnInitProof<E: Pairing> {
+pub(crate) struct SnInitZkProof<E: Pairing> {
     // e(N, g) + e(g2^-1, M1) + e(g2^-1, pk) == 1
     pub(crate) c1: Vec<Com<<E as Pairing>::G1>>,
     pub(crate) d1: Vec<Com<<E as Pairing>::G2>>,
@@ -414,7 +414,7 @@ pub(crate) struct SnInitProof<E: Pairing> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct SnProof<E: Pairing> {
+pub(crate) struct SnZkProof<E: Pairing> {
     // e(N, g) + e(g2^-1, sn-pf) + e(g2^-1, pk) == 1
     pub(crate) c1: Vec<Com<<E as Pairing>::G1>>,
     pub(crate) d1: Vec<Com<<E as Pairing>::G2>>,
