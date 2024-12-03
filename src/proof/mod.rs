@@ -4,7 +4,7 @@ pub(crate) mod ppe;
 pub(crate) use ppe::*;
 
 pub(crate) mod crs;
-pub(crate) use crs::*;
+pub use crs::CRS;
 
 pub(crate) mod mse;
 pub(crate) use mse::*;

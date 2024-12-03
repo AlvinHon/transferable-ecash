@@ -27,31 +27,42 @@ impl<E: Pairing> CRS<E> {
     }
 
     pub(crate) fn u(&self) -> Array2<E::G1> {
+        // we have u1 = u.0, u2 = u.1, the matrix u is:
+        // [u1.0 u2.0]
+        // [u1.1 u2.1]
         arr2(&[
             [self.cks.u.0 .0.into(), self.cks.u.1 .0.into()],
             [self.cks.u.0 .1.into(), self.cks.u.1 .1.into()],
         ])
     }
 
+    #[allow(dead_code)]
     pub(crate) fn u1(&self) -> Array2<E::G1> {
         arr2(&[[self.cks.u.0 .0.into(), self.cks.u.0 .1.into()]])
     }
 
+    #[allow(dead_code)]
     pub(crate) fn u2(&self) -> Array2<E::G1> {
         arr2(&[[self.cks.u.1 .0.into(), self.cks.u.1 .1.into()]])
     }
 
+    #[allow(dead_code)]
     pub(crate) fn v(&self) -> Array2<E::G2> {
+        // we have v1 = v.0, v2 = v.1, the matrix v is:
+        // [v1.0 v2.0]
+        // [v1.1 v2.1]
         arr2(&[
             [self.cks.v.0 .0.into(), self.cks.v.1 .0.into()],
             [self.cks.v.0 .1.into(), self.cks.v.1 .1.into()],
         ])
     }
 
+    #[allow(dead_code)]
     pub(crate) fn v1(&self) -> Array2<E::G2> {
         arr2(&[[self.cks.v.0 .0.into(), self.cks.v.0 .1.into()]])
     }
 
+    #[allow(dead_code)]
     pub(crate) fn v2(&self) -> Array2<E::G2> {
         arr2(&[[self.cks.v.1 .0.into(), self.cks.v.1 .1.into()]])
     }

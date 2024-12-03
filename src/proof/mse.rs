@@ -226,6 +226,7 @@ fn l1<G: CurveGroup>(a: &Array2<G>) -> Array2<G> {
 }
 
 /// Mapping function of Field elements, // l(z) = z u where u = u2 + (0, p). dim = (m, 2)
+#[allow(dead_code)]
 fn lz1<E: Pairing>(crs: &CRS<E>, z: &Array2<E::ScalarField>) -> Array2<E::G1> {
     let m = z.dim().0;
 

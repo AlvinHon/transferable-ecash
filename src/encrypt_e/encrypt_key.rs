@@ -1,5 +1,8 @@
 use ark_ec::pairing::Pairing;
+use ark_std::{rand::Rng, One};
 use std::ops::Mul;
+
+use crate::proof::{check_mse_proof_ayxb, create_mse_proof_ayxb, MSEProof, CRS};
 
 use super::ciphertext::Ciphertext;
 
@@ -44,6 +47,63 @@ impl<E: Pairing> EncryptKey<E> {
         Ciphertext { c0, c1, c2 }
     }
 
+    /// Create a proof of knowledge of the messages `m1` and `m2`, and the randomness `v` used in the encryption.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use ark_ec::pairing::Pairing;
+    /// use ark_std::{test_rng, UniformRand};
+    /// use transferable_ecash::{encrypt_e, proof};
+    ///
+    /// type E = ark_bls12_381::Bls12_381;
+    /// type G1 = <E as Pairing>::G1Affine;
+    /// type Fr = <E as Pairing>::ScalarField;
+    ///
+    /// let rng = &mut test_rng();
+    /// let crs = proof::CRS::<E>::rand(rng);
+    /// let (dk, ek) = encrypt_e::key_gen::<E, _>(rng);
+    /// let (m1, m2) = (G1::rand(rng), G1::rand(rng));
+    /// let v = Fr::rand(rng);
+    ///
+    /// let c = ek.encrypt(m1, m2, v);
+    /// let proofs = ek.prove(rng, &crs, m1, m2, v);
+    /// assert!(ek.verify(&crs, &c, &proofs));
+    /// ```
+    pub fn prove<R: Rng>(
+        &self,
+        rng: &mut R,
+        crs: &CRS<E>,
+        m1: E::G1Affine,
+        m2: E::G1Affine,
+        v: E::ScalarField,
+    ) -> (MSEProof<E>, MSEProof<E>, MSEProof<E>) {
+        // prove knowledge of v s.t. c0 = g^v
+        let proof1 = create_mse_proof_ayxb(rng, crs, vec![self.g.into()], vec![v], vec![], vec![]);
+
+        // prove knowledge of v and m1 s.t. c1 = m1 + y1^v
+        let proof2 = create_mse_proof_ayxb(
+            rng,
+            crs,
+            vec![self.y1.into()],
+            vec![v],
+            vec![m1.into()],
+            vec![E::ScalarField::one()],
+        );
+
+        // prove knowledge of v and m2 s.t. c2 = m2 + y2^v
+        let proof3 = create_mse_proof_ayxb(
+            rng,
+            crs,
+            vec![self.y2.into()],
+            vec![v],
+            vec![m2.into()],
+            vec![E::ScalarField::one()],
+        );
+
+        (proof1, proof2, proof3)
+    }
+
     /// Randomize a ciphertext with randomness `v`.
     ///
     /// # Example
@@ -75,9 +135,51 @@ impl<E: Pairing> EncryptKey<E> {
         Ciphertext { c0, c1, c2 }
     }
 
-    /// Verify a ciphertext with proofs.
-    pub fn verify(&self) -> bool {
-        todo!()
+    /// Verify proof that proves the knowledge of messages `m1` and `m2`, and the randomness `v`
+    /// used in the encryption associated with the ciphertext.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use ark_ec::pairing::Pairing;
+    /// use ark_std::{test_rng, UniformRand};
+    /// use transferable_ecash::{encrypt_e, proof};
+    ///
+    /// type E = ark_bls12_381::Bls12_381;
+    /// type G1 = <E as Pairing>::G1Affine;
+    /// type Fr = <E as Pairing>::ScalarField;
+    ///
+    /// let rng = &mut test_rng();
+    /// let crs = proof::CRS::<E>::rand(rng);
+    /// let (dk, ek) = encrypt_e::key_gen::<E, _>(rng);
+    /// let (m1, m2) = (G1::rand(rng), G1::rand(rng));
+    /// let v = Fr::rand(rng);
+    ///
+    /// let c = ek.encrypt(m1, m2, v);
+    /// let proofs = ek.prove(rng, &crs, m1, m2, v);
+    /// assert!(ek.verify(&crs, &c, &proofs));
+    /// ```
+    pub fn verify(
+        &self,
+        crs: &CRS<E>,
+        c: &Ciphertext<E>,
+        proofs: &(MSEProof<E>, MSEProof<E>, MSEProof<E>),
+    ) -> bool {
+        check_mse_proof_ayxb(crs, vec![self.g.into()], vec![], c.c0.into(), &proofs.0)
+            && check_mse_proof_ayxb(
+                crs,
+                vec![self.y1.into()],
+                vec![E::ScalarField::one()],
+                c.c1.into(),
+                &proofs.1,
+            )
+            && check_mse_proof_ayxb(
+                crs,
+                vec![self.y2.into()],
+                vec![E::ScalarField::one()],
+                c.c2.into(),
+                &proofs.2,
+            )
     }
 
     /// Adapt a proof to a rerandomization.
