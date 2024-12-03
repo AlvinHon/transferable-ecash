@@ -182,19 +182,61 @@ impl<E: Pairing> EncryptKey<E> {
             )
     }
 
-    /// Adapt a proof to a rerandomization.
+    /// Adapt a proof to a rerandomization (with randomness `v` used in ciphertext re-randomization)
+    /// and outputs equality proofs.
     ///
-    /// A randomized algorithm which takes as input,
-    /// - a commitment key,
-    /// - an encryption public key,
-    /// - a commitment,
-    /// - an equality proof (i.e a Groth-Sahai proof and a commitment),
-    /// - a ciphertext,
-    /// - a proof,
-    /// - some randomness,
+    /// # Example
     ///
-    /// and outputs an equality proof.
-    pub fn adapt_proof(&self) {
-        todo!()
+    /// ```rust
+    /// use ark_ec::pairing::Pairing;
+    /// use ark_std::{test_rng, UniformRand};
+    /// use transferable_ecash::{encrypt_e, proof};
+    ///
+    /// type E = ark_bls12_381::Bls12_381;
+    /// type G1 = <E as Pairing>::G1Affine;
+    /// type Fr = <E as Pairing>::ScalarField;
+    ///
+    /// let rng = &mut test_rng();
+    /// let crs = proof::CRS::<E>::rand(rng);
+    /// let (dk, ek) = encrypt_e::key_gen::<E, _>(rng);
+    /// let (m1, m2) = (G1::rand(rng), G1::rand(rng));
+    /// let v = Fr::rand(rng);
+    ///
+    /// let c = ek.encrypt(m1, m2, v);
+    /// let proofs = ek.prove(rng, &crs, m1, m2, v);
+    ///
+    /// let v_prime = Fr::rand(rng);
+    /// let c_prime = ek.rerandomize(&c, v_prime);
+    /// let proofs_prime = ek.adapt_proof(rng, &crs, proofs, v_prime);
+    /// assert!(ek.verify(&crs, &c_prime, &proofs_prime));
+    /// ```
+    pub fn adapt_proof<R: Rng>(
+        &self,
+        rng: &mut R,
+        crs: &CRS<E>,
+        proofs: (MSEProof<E>, MSEProof<E>, MSEProof<E>), // included the commitments
+        v: E::ScalarField,
+    ) -> (MSEProof<E>, MSEProof<E>, MSEProof<E>) {
+        let (proof1, proof2, proof3) = proofs;
+        let proof1 = proof1.adapt_proof(crs, vec![v], vec![]).randomize(
+            rng,
+            crs,
+            vec![self.g.into()],
+            vec![],
+        );
+        let proof2 = proof2.adapt_proof(crs, vec![v], vec![]).randomize(
+            rng,
+            crs,
+            vec![self.y1.into()],
+            vec![E::ScalarField::one()],
+        );
+        let proof3 = proof3.adapt_proof(crs, vec![v], vec![]).randomize(
+            rng,
+            crs,
+            vec![self.y2.into()],
+            vec![E::ScalarField::one()],
+        );
+
+        (proof1, proof2, proof3)
     }
 }

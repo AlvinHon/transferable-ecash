@@ -115,7 +115,7 @@ impl<E: Pairing> VerifyKey<E> {
     /// ```rust
     /// use ark_ec::pairing::Pairing;
     /// use ark_std::{test_rng, UniformRand};
-    /// use transferable_ecash::{lhsps, CRS};
+    /// use transferable_ecash::{lhsps, proof};
     ///
     /// type E = ark_bls12_381::Bls12_381;
     /// type G1 = <E as Pairing>::G1Affine;
@@ -126,7 +126,7 @@ impl<E: Pairing> VerifyKey<E> {
     /// let sig = sk.sign(&m).unwrap();
     /// assert!(pk.verify(&m, &sig));
     ///
-    /// let crs = CRS::<E>::rand(rng);
+    /// let crs = proof::CRS::<E>::rand(rng);
     /// pk.generate_proof(rng, &crs, &sig);
     /// ```
     pub fn generate_proof<R: RngCore>(
@@ -144,7 +144,7 @@ impl<E: Pairing> VerifyKey<E> {
     /// ```rust
     /// use ark_ec::pairing::Pairing;
     /// use ark_std::{test_rng, UniformRand};
-    /// use transferable_ecash::{lhsps, CRS};
+    /// use transferable_ecash::{lhsps, proof};
     ///
     /// type E = ark_bls12_381::Bls12_381;
     /// type G1 = <E as Pairing>::G1Affine;
@@ -155,7 +155,7 @@ impl<E: Pairing> VerifyKey<E> {
     /// let sig = sk.sign(&m).unwrap();
     /// assert!(pk.verify(&m, &sig));
     ///
-    /// let crs = CRS::<E>::rand(rng);
+    /// let crs = proof::CRS::<E>::rand(rng);
     /// let pf = pk.generate_proof(rng, &crs, &sig);
     /// assert!(pk.check_proof(&crs, &pf, &m));
     /// ```

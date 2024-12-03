@@ -1,4 +1,10 @@
-//! This module implements the encryption scheme E defined by  `Transferable E-cash: A Cleaner Model and the First Practical Instantiation`.
+//! This module implements idea of the encryption scheme E defined by the paper
+//! `Transferable E-cash: A Cleaner Model and the First Practical Instantiation`.
+//!
+//! The details are not obvious from the paper (Appendix B.3), but the encryption scheme is
+//! seemingly a variant of ElGamal encryption. It is not clear how GS proof should be adapted
+//! to this encryption scheme. The implementation here uses GS proof for providing validity
+//! of the "formness" of the ciphertext, i.e. prove you know the value `r` in ciphertext `g^r`.
 
 pub mod ciphertext;
 pub mod decrypt_key;
