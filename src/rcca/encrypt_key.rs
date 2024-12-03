@@ -4,7 +4,7 @@ use ark_std::{rand::Rng, One};
 use std::ops::{Mul, Neg};
 
 use crate::lhsps;
-use crate::proof::{create_proof_ayxb, CProof, CRS};
+use crate::proof::{create_ppe_proof_ayxb, PPEProof, CRS};
 
 use super::ciphertext::Ciphertext;
 
@@ -47,7 +47,7 @@ impl<E: Pairing> EncryptKey<E> {
         // TODO: trivial because b = 1. optimization point here.
         let b = E::ScalarField::one();
         // e(A, Y) + e(X, B) = e(g, g~^-b) + e(g^b, g~) = 0
-        let cpf_b = create_proof_ayxb(
+        let cpf_b = create_ppe_proof_ayxb(
             rng,
             &self.crs,
             self.g,
@@ -56,14 +56,14 @@ impl<E: Pairing> EncryptKey<E> {
             self.crs.g2_gen,
         );
         // generate gs-proof of e(ps_i, g2) + e(ci, g2^-b) = 0
-        let cpf_ps: Vec<CProof<E>> = c
+        let cpf_ps: Vec<PPEProof<E>> = c
             .iter()
             .skip(1)
             .map(|c_i| {
                 // ps_i = c_i^b
                 let ps_i = c_i.mul(b).into();
                 // e(A, Y) + e(X, B) = e(c_i, g~^-b) + e(g^b, g~) = 0
-                create_proof_ayxb::<E, _>(
+                create_ppe_proof_ayxb::<E, _>(
                     rng,
                     &self.crs,
                     *c_i,
@@ -97,11 +97,11 @@ impl<E: Pairing> EncryptKey<E> {
         // 1. e(f^b, g2) + e(f, g2^-b) = 0
         // 2. e(g^b, g2) + e(g, g2^-b) = 0 (i.e. cpf_b)
         // 3. e(h_i^b, g2) + e(h_i, g2^-b) = 0
-        let cpf_fgh: Vec<CProof<E>> = fgh
+        let cpf_fgh: Vec<PPEProof<E>> = fgh
             .iter()
             .map(|fgh_i| {
                 // e(A, Y) + e(X, B) = 0
-                create_proof_ayxb::<E, _>(
+                create_ppe_proof_ayxb::<E, _>(
                     rng,
                     &self.crs,
                     *fgh_i,

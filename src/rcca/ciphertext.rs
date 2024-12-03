@@ -1,16 +1,16 @@
 use ark_ec::{pairing::Pairing, AffineRepr};
 
-use crate::proof::{check_proof_ayxb, CProof};
+use crate::proof::{check_ppe_proof_ayxb, PPEProof};
 
 use super::encrypt_key::EncryptKey;
 
 pub struct Ciphertext<E: Pairing> {
     pub(crate) c: Vec<E::G1Affine>,
-    pub(crate) cpf_b: CProof<E>,
-    pub(crate) cpf_ps: Vec<CProof<E>>,
-    pub(crate) cpf_v: CProof<E>,
-    pub(crate) cpf_fgh: Vec<CProof<E>>,
-    pub(crate) cpf_w: CProof<E>,
+    pub(crate) cpf_b: PPEProof<E>,
+    pub(crate) cpf_ps: Vec<PPEProof<E>>,
+    pub(crate) cpf_v: PPEProof<E>,
+    pub(crate) cpf_fgh: Vec<PPEProof<E>>,
+    pub(crate) cpf_w: PPEProof<E>,
 }
 
 impl<E: Pairing> Ciphertext<E> {
@@ -23,7 +23,7 @@ impl<E: Pairing> Ciphertext<E> {
         // check all proofs
         let crs = &enc_key.crs;
         // cfp_b is proof of e(A, Y) + e(X, B) = e(g, g~^-b) + e(g^b, g~) = 0
-        if !check_proof_ayxb(crs, &self.cpf_b, enc_key.g, crs.g2_gen) {
+        if !check_ppe_proof_ayxb(crs, &self.cpf_b, enc_key.g, crs.g2_gen) {
             return Err(());
         }
         // cfp_ps is proof of e(A, Y) + e(X, B) = e(c_i, g~^-b) + e(g^b, g~) = 0
@@ -32,7 +32,7 @@ impl<E: Pairing> Ciphertext<E> {
             .iter()
             .skip(1)
             .zip(self.cpf_ps.iter())
-            .any(|(ci, cpf)| !check_proof_ayxb(crs, cpf, *ci, crs.g2_gen))
+            .any(|(ci, cpf)| !check_ppe_proof_ayxb(crs, cpf, *ci, crs.g2_gen))
         {
             return Err(());
         }
@@ -48,7 +48,7 @@ impl<E: Pairing> Ciphertext<E> {
         if fgh
             .iter()
             .zip(self.cpf_fgh.iter())
-            .any(|(fgh_i, cpf)| !check_proof_ayxb(crs, cpf, *fgh_i, crs.g2_gen))
+            .any(|(fgh_i, cpf)| !check_ppe_proof_ayxb(crs, cpf, *fgh_i, crs.g2_gen))
         {
             return Err(());
         }
