@@ -1,4 +1,4 @@
-//! This module provides functions related to GS proof for internal use.
+//! This module provides functions related to GS proof for pairing product equation.
 
 use ark_ec::pairing::{Pairing, PairingOutput};
 use ark_std::{rand::RngCore, UniformRand, Zero};
