@@ -92,8 +92,8 @@ pub(crate) fn create_mse_proof_ayxb<E: Pairing, R: Rng>(
 ) -> MSEProof<E> {
     let m = x.len();
     let n = y.len();
-    assert!(m == a.len());
-    assert!(n == b.len());
+    assert!(m == b.len());
+    assert!(n == a.len());
 
     let a = Array2::from_shape_vec((n, 1), a).unwrap();
     let y = Array2::from_shape_vec((n, 1), y).unwrap();
@@ -437,6 +437,69 @@ mod test {
             &crs,
             vec![y],
             vec![Fr::one()],
+            c_prime,
+            &new_proof
+        ));
+    }
+
+    #[test]
+    fn test_mse_proof_ay() {
+        let rng = &mut ark_std::test_rng();
+
+        let crs = CRS::<E>::rand(rng);
+
+        // c = rg
+        let y = G1::rand(rng);
+        let r = Fr::rand(rng);
+        let c = y.mul(r);
+
+        // GS proof for multi-scalar multiplication equation:
+        // yA = c
+        // where y = [r], A = [Y], X = [], b = []
+
+        let proof = create_mse_proof_ayxb(rng, &crs, vec![y], vec![r], vec![], vec![]);
+
+        assert!(check_mse_proof_ayxb(&crs, vec![y], vec![], c, &proof));
+
+        // Test randomization
+
+        let new_proof = proof.randomize(rng, &crs, vec![y], vec![]);
+        assert!(proof.c == new_proof.c); // no commitment for x
+        assert!(proof.d != new_proof.d);
+        assert!(proof.pi != new_proof.pi);
+        assert!(proof.theta != new_proof.theta);
+
+        assert!(check_mse_proof_ayxb(&crs, vec![y], vec![], c, &new_proof));
+    }
+
+    #[test]
+    fn test_adapt_mse_proof_ay() {
+        let rng = &mut ark_std::test_rng();
+
+        let crs = CRS::<E>::rand(rng);
+
+        // c = rY
+        let y = G1::rand(rng);
+        let r = Fr::rand(rng);
+        let c = y.mul(r);
+
+        // GS proof for multi-scalar multiplication equation:
+        // yA = c
+        // where y = [r], A = [Y], X = [], b = []
+
+        let proof = create_mse_proof_ayxb(rng, &crs, vec![y], vec![r], vec![], vec![]);
+
+        assert!(check_mse_proof_ayxb(&crs, vec![y], vec![], c, &proof));
+
+        // Modify variable y
+        let r_prime = Fr::rand(rng);
+        let c_prime = c + y.mul(r_prime); // c' = c + r'Y = (r + r')Y
+
+        let new_proof = proof.adapt_proof(&crs, vec![r_prime], vec![]);
+        assert!(check_mse_proof_ayxb(
+            &crs,
+            vec![y],
+            vec![],
             c_prime,
             &new_proof
         ));
